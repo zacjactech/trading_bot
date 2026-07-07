@@ -80,25 +80,41 @@ trading_bot/
 
 ## 🚀 Setup
 
-### 1. Clone / Download
+### One-Click Setup (Recommended)
+
+**Linux / macOS / WSL:**
+```bash
+git clone https://github.com/zacjactech/trading_bot.git
+cd trading_bot
+bash setup.sh
+```
+
+**Windows PowerShell:**
+```powershell
+.\setup.ps1
+```
+
+**Windows CMD (double-click):**
+```
+setup.bat
+```
+
+All setup scripts install dependencies and run a connectivity test. No orders are placed by default.
+
+**To run demo orders after setup:**
+```bash
+bash setup.sh --demo        # Linux/Mac
+.\setup.ps1 -Demo           # PowerShell
+setup.bat --demo            # CMD
+```
+
+### Manual Setup
 
 ```bash
 git clone https://github.com/zacjactech/trading_bot.git
 cd trading_bot
-```
-
-### 2. Create virtual environment
-
-```bash
 python -m venv .venv
-# Windows: .venv\Scripts\activate
-# Linux/Mac:
-source .venv/bin/activate
-```
-
-### 3. Install dependencies
-
-```bash
+source .venv/bin/activate    # Linux/Mac
 pip install -r requirements.txt
 ```
 

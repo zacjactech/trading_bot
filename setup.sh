@@ -4,6 +4,13 @@
 # Works: Linux (Ubuntu/Debian/Fedora/Arch/Zorin), macOS, WSL, Git Bash
 set -e
 
+DEMO=false
+for arg in "$@"; do
+  case "$arg" in
+    --demo) DEMO=true ;;
+  esac
+done
+
 echo "🚀 Binance Futures Testnet Bot – Setup"
 echo ""
 
@@ -79,36 +86,40 @@ echo ""
 echo "=== Connectivity Test ==="
 python cli.py test || true
 
-echo ""
-echo "=== MARKET ORDER DEMO ==="
-python cli.py market --symbol BTCUSDT --side BUY --quantity 0.001 || true
+if [ "$DEMO" = true ]; then
+  echo ""
+  echo "=== MARKET ORDER DEMO ==="
+  python cli.py market --symbol BTCUSDT --side BUY --quantity 0.001 || true
+
+  echo ""
+  echo "=== LIMIT ORDER DEMO ==="
+  python cli.py limit --symbol BTCUSDT --side SELL --quantity 0.001 --price 65000 || true
+
+  echo ""
+  echo "=== STOP-LIMIT BONUS ==="
+  python cli.py stop-limit --symbol BTCUSDT --side SELL --quantity 0.001 --price 59000 --stop-price 59500 || true
+
+  echo ""
+  echo "=== TWAP BONUS ==="
+  python cli.py twap --symbol BTCUSDT --side BUY --quantity 0.003 --slices 3 --interval 2 || true
+
+  echo ""
+  echo "=== GRID BONUS ==="
+  python cli.py grid --symbol BTCUSDT --side BUY --quantity 0.001 --lower 60000 --upper 65000 --grids 5 || true
+fi
 
 echo ""
-echo "=== LIMIT ORDER DEMO ==="
-# Testnet BTC ~60000 – use safe price
-python cli.py limit --symbol BTCUSDT --side SELL --quantity 0.001 --price 65000 || true
-
-echo ""
-echo "=== STOP-LIMIT BONUS ==="
-python cli.py stop-limit --symbol BTCUSDT --side SELL --quantity 0.001 --price 59000 --stop-price 59500 || true
-
-echo ""
-echo "=== TWAP BONUS ==="
-python cli.py twap --symbol BTCUSDT --side BUY --quantity 0.003 --slices 3 --interval 2 || true
-
-echo ""
-echo "=== GRID BONUS ==="
-# Testnet-safe grid: 60000 - 65000 (max ~66280)
-python cli.py grid --symbol BTCUSDT --side BUY --quantity 0.001 --lower 60000 --upper 65000 --grids 5 || true
-
-echo ""
-echo "✅ Done – logs in ./logs/"
-ls -lh logs/ || true
+echo "✅ Setup complete – logs in ./logs/"
 echo ""
 echo "Next steps:"
 echo "  Interactive CLI : python cli.py interactive"
 echo "  Web UI          : streamlit run ui.py"
-echo "  Balance check   : python cli.py balance"
+echo "  Place an order  : python cli.py market --symbol BTCUSDT --side BUY --quantity 0.001"
+echo "  Check balance   : python cli.py balance"
+if [ "$DEMO" = false ]; then
+  echo ""
+  echo "  Run demo orders : bash setup.sh --demo"
+fi
 echo ""
 echo "To use LIVE keys: edit .env"
 echo "  BINANCE_API_KEY=..."

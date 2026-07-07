@@ -2,6 +2,11 @@
 # PrimeTrade.ai – Python Developer Task
 # Run: Right-click → Run with PowerShell
 #  or: powershell -ExecutionPolicy Bypass -File .\setup.ps1
+#  or: powershell -ExecutionPolicy Bypass -File .\setup.ps1 -Demo
+
+param(
+    [switch]$Demo
+)
 
 $ErrorActionPreference = "Stop"
 $Host.UI.RawUI.WindowTitle = "PrimeTrade – Binance Futures Bot Setup"
@@ -84,37 +89,40 @@ Write-Host "=== Test connectivity ===" -ForegroundColor Cyan
 python cli.py test
 if ($LASTEXITCODE -ne 0) { Write-Host "test failed – continuing anyway (may need API keys)" -ForegroundColor Yellow }
 
-Write-Host ""
-Write-Host "=== MARKET ORDER DEMO ===" -ForegroundColor Cyan
-python cli.py market --symbol BTCUSDT --side BUY --quantity 0.001
+if ($Demo) {
+    Write-Host ""
+    Write-Host "=== MARKET ORDER DEMO ===" -ForegroundColor Cyan
+    python cli.py market --symbol BTCUSDT --side BUY --quantity 0.001
 
-Write-Host ""
-Write-Host "=== LIMIT ORDER DEMO ===" -ForegroundColor Cyan
-python cli.py limit --symbol BTCUSDT --side SELL --quantity 0.001 --price 65000
+    Write-Host ""
+    Write-Host "=== LIMIT ORDER DEMO ===" -ForegroundColor Cyan
+    python cli.py limit --symbol BTCUSDT --side SELL --quantity 0.001 --price 65000
 
-Write-Host ""
-Write-Host "=== STOP-LIMIT BONUS ===" -ForegroundColor Magenta
-python cli.py stop-limit --symbol BTCUSDT --side SELL --quantity 0.001 --price 59000 --stop-price 59500
+    Write-Host ""
+    Write-Host "=== STOP-LIMIT BONUS ===" -ForegroundColor Magenta
+    python cli.py stop-limit --symbol BTCUSDT --side SELL --quantity 0.001 --price 59000 --stop-price 59500
 
-Write-Host ""
-Write-Host "=== TWAP BONUS ===" -ForegroundColor Magenta
-python cli.py twap --symbol BTCUSDT --side BUY --quantity 0.003 --slices 3 --interval 2
+    Write-Host ""
+    Write-Host "=== TWAP BONUS ===" -ForegroundColor Magenta
+    python cli.py twap --symbol BTCUSDT --side BUY --quantity 0.003 --slices 3 --interval 2
 
-Write-Host ""
-Write-Host "=== GRID BONUS ===" -ForegroundColor Magenta
-python cli.py grid --symbol BTCUSDT --side BUY --quantity 0.001 --lower 60000 --upper 65000 --grids 3
+    Write-Host ""
+    Write-Host "=== GRID BONUS ===" -ForegroundColor Magenta
+    python cli.py grid --symbol BTCUSDT --side BUY --quantity 0.001 --lower 60000 --upper 65000 --grids 3
+}
 
 Write-Host ""
 Write-Host "✅ Setup complete!" -ForegroundColor Green
 Write-Host ""
-Write-Host "Logs saved to: .\logs\"
-Get-ChildItem .\logs\ | Format-Table Name, Length, LastWriteTime
-
-Write-Host ""
 Write-Host "Next steps:"
 Write-Host "  Interactive CLI :  python cli.py interactive" -ForegroundColor White
 Write-Host "  Web UI          :  streamlit run ui.py" -ForegroundColor White
+Write-Host "  Place an order  :  python cli.py market --symbol BTCUSDT --side BUY --quantity 0.001" -ForegroundColor White
 Write-Host "  Balance         :  python cli.py balance" -ForegroundColor White
+if (-not $Demo) {
+    Write-Host ""
+    Write-Host "  Run demo orders :  .\setup.ps1 -Demo" -ForegroundColor Yellow
+}
 Write-Host ""
 Write-Host "To use LIVE keys, edit .env:"
 Write-Host "  BINANCE_API_KEY=..."
