@@ -1,9 +1,20 @@
 """
 Input validation for trading orders
 """
-from typing import Optional, Tuple
+from typing import Optional
 import re
+from bot.types import OrderParams
 
+__all__ = [
+    "ValidationError",
+    "validate_symbol",
+    "validate_side",
+    "validate_order_type",
+    "validate_quantity",
+    "validate_price",
+    "validate_stop_price",
+    "validate_order_inputs",
+]
 VALID_SIDES = ["BUY", "SELL"]
 VALID_ORDER_TYPES = ["MARKET", "LIMIT", "STOP", "STOP_MARKET", "TAKE_PROFIT", "TAKE_PROFIT_MARKET", "STOP_LIMIT"]
 # Core required: MARKET, LIMIT - bonus adds STOP_LIMIT etc.
@@ -22,9 +33,7 @@ def validate_symbol(symbol: str) -> str:
     symbol = symbol.upper().strip()
     if not VALID_SYMBOLS_PATTERN.match(symbol):
         raise ValidationError(f"Invalid symbol format: {symbol}. Expected e.g., BTCUSDT")
-    if not symbol.endswith("USDT"):
-        # Warning not error - allow other quote assets on futures
-        pass
+    # Non-USDT quote assets are allowed on Binance Futures (e.g., BTCBUSD)
     return symbol
 
 def validate_side(side: str) -> str:
@@ -93,7 +102,7 @@ def validate_order_inputs(
     quantity,
     price=None,
     stop_price=None
-) -> dict:
+) -> OrderParams:
     """
     Comprehensive order validation
     Returns cleaned dict or raises ValidationError

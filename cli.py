@@ -20,7 +20,6 @@ from bot.config import Config
 from bot.logging_config import logger, setup_logger
 
 app = typer.Typer(
-    help="🚀 Binance Futures Testnet Trading Bot",
     rich_markup_mode="rich",
     add_completion=False
 )
@@ -30,10 +29,11 @@ console = Console()
 cli_logger = setup_logger("cli", level=20)
 
 
-def check_config():
-    """Check API configuration"""
+@app.callback()
+def main_callback():
+    """🚀 Binance Futures Testnet Trading Bot"""
     errors = Config.validate()
-    if errors:
+    if errors and not Config.MOCK_TRADING:
         console.print(Panel(
             "\n".join([f"• {e}" for e in errors]) + 
             "\n\n[bold]Setup:[/bold]\n1. Copy .env.example to .env\n2. Add your Testnet API Key/Secret\n3. Get keys from: https://testnet.binancefuture.com",
@@ -51,7 +51,6 @@ def market(
     interactive: bool = typer.Option(False, "--interactive", "-i", help="Interactive prompt mode")
 ):
     """Place a MARKET order"""
-    check_config()
     
     if interactive:
         symbol, side, quantity = interactive_market_prompt()
@@ -74,7 +73,6 @@ def limit(
     interactive: bool = typer.Option(False, "--interactive", "-i", help="Interactive mode")
 ):
     """Place a LIMIT order"""
-    check_config()
     
     if interactive:
         symbol, side, quantity, price = interactive_limit_prompt()
@@ -96,8 +94,7 @@ def stop_limit(
     price: float = typer.Option(..., "--price", "-p", help="Limit price"),
     stop_price: float = typer.Option(..., "--stop-price", help="Stop trigger price"),
 ):
-    """BONUS: Place a STOP_LIMIT order"""
-    check_config()
+    """Place a STOP_LIMIT order"""
     try:
         manager = OrderManager()
         result = manager.place_stop_limit_order(symbol, side, quantity, price, stop_price)
@@ -115,8 +112,7 @@ def twap(
     slices: int = typer.Option(5, "--slices", help="Number of slices"),
     interval: int = typer.Option(2, "--interval", help="Seconds between slices"),
 ):
-    """BONUS: TWAP - split order over time"""
-    check_config()
+    """TWAP - split order over time"""
     console.print(f"[cyan]Starting TWAP: {slices} slices, {interval}s interval[/cyan]")
     manager = OrderManager()
     results = manager.place_twap_order(symbol, side, quantity, slices, interval)
@@ -143,8 +139,7 @@ def grid(
     upper: float = typer.Option(..., help="Upper price"),
     grids: int = typer.Option(5, help="Number of grid levels"),
 ):
-    """BONUS: Grid trading - multiple limit orders"""
-    check_config()
+    """Grid trading - multiple limit orders"""
     manager = OrderManager()
     results = manager.place_grid_orders(symbol, side, quantity, lower, upper, grids)
     success = len([r for r in results if "orderId" in r])
@@ -154,7 +149,6 @@ def grid(
 @app.command()
 def balance():
     """Show Futures account balance"""
-    check_config()
     client = BinanceFuturesClient()
     try:
         balances = client.get_account_balance()
@@ -176,7 +170,6 @@ def price(
     symbol: str = typer.Argument(..., help="e.g., BTCUSDT")
 ):
     """Get current symbol price"""
-    check_config()
     client = BinanceFuturesClient()
     try:
         p = client.get_symbol_price(symbol.upper())
@@ -188,9 +181,8 @@ def price(
 @app.command()
 def interactive():
     """
-    BONUS: Enhanced interactive CLI menu
+    Enhanced interactive CLI menu
     """
-    check_config()
     console.print(Panel.fit("[bold cyan]Binance Futures Testnet – Interactive Trader[/bold cyan]", border_style="cyan"))
     
     while True:
@@ -273,8 +265,10 @@ def interactive_limit_prompt():
     except Exception:
         p = None
     quantity = FloatPrompt.ask("Quantity")
-    default_price = str(p) if p else ""
-    price_val = FloatPrompt.ask("Limit price", default=p if p else ...)
+    if p:
+        price_val = FloatPrompt.ask("Limit price", default=p)
+    else:
+        price_val = FloatPrompt.ask("Limit price")
     console.print(f"\n[bold]Confirm:[/bold] {side} {quantity} {symbol} @ {price_val} LIMIT")
     if not Confirm.ask("Execute?", default=True):
         raise typer.Abort()
@@ -296,7 +290,6 @@ def interactive_stop_limit_prompt():
 @app.command()
 def test():
     """Test API connectivity"""
-    check_config()
     client = BinanceFuturesClient()
     try:
         console.print("[cyan]Pinging testnet...[/cyan]")

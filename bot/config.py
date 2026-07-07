@@ -2,13 +2,14 @@
 Configuration loader for Binance Futures Testnet
 """
 import os
+
 try:
     from dotenv import load_dotenv
     load_dotenv()
 except ImportError:
-    # dotenv optional – fallback to system env only
-    def load_dotenv():
-        pass
+    pass
+
+__all__ = ["Config"]
 
 class Config:
     """Trading bot configuration"""
@@ -51,3 +52,25 @@ class Config:
     @classmethod
     def is_configured(cls):
         return bool(cls.BINANCE_API_KEY and cls.BINANCE_API_SECRET)
+
+    @classmethod
+    def reload(cls):
+        """Re-read all config values from environment variables.
+        
+        Useful in tests or when env vars may change after initial import.
+        Call after os.environ changes or a second load_dotenv() to pick up new values.
+        """
+        cls.BINANCE_API_KEY = os.getenv("BINANCE_API_KEY", "")
+        cls.BINANCE_API_SECRET = os.getenv("BINANCE_API_SECRET", "")
+        cls.BASE_URL = os.getenv("BINANCE_BASE_URL", "https://testnet.binancefuture.com")
+        cls.MOCK_TRADING = os.getenv("MOCK_TRADING", "false").lower() in ("true", "1", "yes")
+
+    @classmethod
+    def summary(cls) -> dict:
+        """Return a safe dictionary representation of the config (secrets masked)."""
+        return {
+            "BASE_URL": cls.BASE_URL,
+            "MOCK_TRADING": cls.MOCK_TRADING,
+            "BINANCE_API_KEY": "***" if cls.BINANCE_API_KEY else None,
+            "BINANCE_API_SECRET": "***" if cls.BINANCE_API_SECRET else None,
+        }

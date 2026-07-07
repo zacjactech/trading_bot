@@ -7,6 +7,8 @@ import os
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
 
+__all__ = ["setup_logger", "logger"]
+
 LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs")
 os.makedirs(LOG_DIR, exist_ok=True)
 

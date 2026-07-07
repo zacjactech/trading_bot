@@ -6,6 +6,7 @@ from .client import BinanceFuturesClient
 from .validators import validate_order_inputs, ValidationError
 from .logging_config import logger
 
+__all__ = ["OrderManager", "print_order_request", "print_order_response"]
 
 class OrderManager:
     """High-level order management with validation and logging"""
@@ -35,14 +36,14 @@ class OrderManager:
         time_in_force: str = "GTC"
     ) -> Dict[str, Any]:
         """
-        BONUS: Place a STOP_LIMIT order
+        Place a STOP_LIMIT order
         """
         logger.info(f"Stop-Limit order requested: {side} {quantity} {symbol} stop={stop_price} limit={price}")
         validated = validate_order_inputs(symbol, side, "STOP_LIMIT", quantity, price, stop_price)
         return self._execute_order(validated, time_in_force=time_in_force)
     
     def place_stop_market_order(self, symbol: str, side: str, quantity: float, stop_price: float) -> Dict[str, Any]:
-        """BONUS: Stop Market"""
+        """Stop Market"""
         validated = validate_order_inputs(symbol, side, "STOP_MARKET", quantity, price=None, stop_price=stop_price)
         return self._execute_order(validated)
     
@@ -56,7 +57,7 @@ class OrderManager:
         order_type: str = "MARKET"
     ) -> list:
         """
-        BONUS: TWAP - Time-Weighted Average Price
+        TWAP - Time-Weighted Average Price
         Splits a large order into smaller chunks over time
         """
         import time as time_module
@@ -93,7 +94,7 @@ class OrderManager:
         grids: int = 5
     ) -> list:
         """
-        BONUS: Grid trading - place multiple limit orders at different price levels
+        Grid trading - place multiple limit orders at different price levels
         """
         logger.info(f"Grid order: {grids} levels between {lower_price} - {upper_price}")
         
@@ -118,9 +119,6 @@ class OrderManager:
     def _execute_order(self, validated: dict, time_in_force: str = "GTC") -> Dict[str, Any]:
         """Execute validated order via client"""
         try:
-            # Pretty print request summary
-            print_order_request(validated)
-            
             response = self.client.place_order(
                 symbol=validated["symbol"],
                 side=validated["side"],
@@ -130,17 +128,13 @@ class OrderManager:
                 stop_price=validated.get("stopPrice"),
                 time_in_force=time_in_force
             )
-            
-            print_order_response(response)
             return response
             
         except ValidationError as ve:
             logger.error(f"Validation failed: {ve}")
-            print(f"\n❌ Validation Error: {ve}\n")
             raise
         except Exception as e:
-            logger.exception(f"Order execution failed: {e}")
-            print(f"\n❌ Order Failed: {e}\n")
+            logger.error(f"Order execution failed: {e}")
             raise
 
 
