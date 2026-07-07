@@ -249,7 +249,8 @@ with trade_col:
         # live price chip
         live_px = get_live_price(symbol)
         if live_px:
-            st.markdown(f"<span class='small-muted'>Mark Price</span><br><b style='font-size:20px'>${live_px:,.2f}</b>", unsafe_allow_html=True)
+            safe_px = f"{live_px:,.2f}".replace("<", "&lt;").replace(">", "&gt;")
+            st.markdown(f"<span class='small-muted'>Mark Price</span><br><b style='font-size:20px'>${safe_px}</b>", unsafe_allow_html=True)
         else:
             st.caption("Price feed offline – using MOCK")
             live_px = 60000.0 if "BTC" in symbol else 3000.0
@@ -367,9 +368,7 @@ with market_col:
             except ValidationError as ve:
                 st.error(f"❌ Validation: {ve}")
             except Exception as e:
-                st.error(f"❌ Execution failed")
-                with st.expander("Error details"):
-                    st.exception(e)
+                st.error(f"❌ Execution failed: {e}")
         else:
             st.info("↖ Configure order left, then Execute.\n\n**Live testnet endpoints:**\n- `POST /fapi/v1/order`\n- HMAC-SHA256 signed\n- Base: `testnet.binancefuture.com`")
             # show recent history

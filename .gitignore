@@ -20,10 +20,7 @@ build/
 .env.*.local
 
 # Logs
-logs/*.log
-!logs/market_order.log
-!logs/limit_order.log
-*.log
+logs/
 
 # IDE
 .vscode/

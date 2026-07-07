@@ -9,6 +9,7 @@ import time
 import hmac
 import hashlib
 import random
+import re
 import requests
 from urllib.parse import urlencode
 from typing import Dict, Any, Optional
@@ -94,7 +95,8 @@ class BinanceFuturesClient:
                 else:
                     raise ValueError(f"Unsupported HTTP method: {method}")
                 
-                logger.info(f"API RESPONSE | status={response.status_code} | url={response.url}")
+                safe_url = re.sub(r'&signature=[^&]+', '', response.url)
+                logger.info(f"API RESPONSE | status={response.status_code} | url={safe_url}")
                 
                 data = response.json()
                 

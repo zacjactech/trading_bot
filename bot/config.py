@@ -20,6 +20,8 @@ class Config:
     BINANCE_API_KEY = os.getenv("BINANCE_API_KEY", "")
     BINANCE_API_SECRET = os.getenv("BINANCE_API_SECRET", "")
     BASE_URL = os.getenv("BINANCE_BASE_URL", "https://testnet.binancefuture.com")
+    if not BASE_URL.startswith("https://"):
+        raise ValueError("BINANCE_BASE_URL must use HTTPS for secure API communication")
     
     # Fallback URLs to try if primary fails (Binance Testnet migration 2025)
     FALLBACK_URLS = [
