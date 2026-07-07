@@ -9,13 +9,10 @@
 ## GitHub Repository
 
 ```
-https://github.com/YOUR_USERNAME/binance-futures-trading-bot
+https://github.com/zacjactech/trading_bot
 ```
 
-Replace YOUR_USERNAME with your GitHub handle, then push:
-
 ```bash
-git remote add origin https://github.com/YOUR_USERNAME/binance-futures-trading-bot.git
 git push -u origin main
 ```
 
@@ -85,7 +82,7 @@ Form URL: https://docs.google.com/forms/d/e/1FAIpQLScNGJdTAV4tMHxHR-vLuXbVR2vGk3
 | Full Name | **FILL ME** |
 | Email | **FILL ME** |
 | Position/Role | Python Developer |
-| GitHub Link(Assignment) | https://github.com/YOUR_USERNAME/binance-futures-trading-bot |
+| GitHub Link(Assignment) | https://github.com/zacjactech/trading_bot |
 | Resume Link | **FILL ME** |
 | Phone Number | **FILL ME** |
 | Experience(in months) | **FILL ME** |

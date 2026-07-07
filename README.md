@@ -83,8 +83,8 @@ trading_bot/
 ### 1. Clone / Download
 
 ```bash
-git clone https://github.com/<your-username>/binance-futures-trading-bot.git
-cd binance-futures-trading-bot
+git clone https://github.com/zacjactech/trading_bot.git
+cd trading_bot
 ```
 
 ### 2. Create virtual environment
@@ -400,7 +400,7 @@ Built for **PrimeTrade.ai / Anything.ai – Python Developer Round-0 Task**
 
 Submission date: July 7, 2026
 
-GitHub: `https://github.com/<your-username>/binance-futures-trading-bot`
+GitHub: `https://github.com/zacjactech/trading_bot`
 
 ---
 
