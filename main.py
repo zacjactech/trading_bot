@@ -1,0 +1,29 @@
+#!/usr/bin/env python3
+"""
+Quick start entry – launches interactive CLI
+"""
+from cli import app, interactive
+import sys
+
+if __name__ == "__main__":
+    # If no args, launch interactive mode
+    if len(sys.argv) == 1:
+        # Launch interactive directly
+        from cli import interactive as inter_cmd
+        import typer
+        # Call interactive command
+        try:
+            from bot.config import Config
+            errors = Config.validate()
+            if errors:
+                print("⚠️  API Configuration Missing")
+                for e in errors:
+                    print(f" • {e}")
+                print("\nSetup:\n 1. cp .env.example .env\n 2. Add your Testnet keys from https://testnet.binancefuture.com")
+                sys.exit(1)
+            # Run interactive
+            inter_cmd()
+        except KeyboardInterrupt:
+            print("\nExiting...")
+    else:
+        app()

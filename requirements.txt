@@ -1,0 +1,18 @@
+# Core dependencies
+requests>=2.31.0
+python-dotenv>=1.0.0
+
+# Enhanced CLI UX (Bonus)
+typer>=0.9.0
+rich>=13.7.0
+click>=8.1.7
+
+# Optional: python-binance library (alternative client)
+python-binance>=1.0.19
+
+# Bonus: Lightweight UI
+streamlit>=1.33.0
+pandas>=2.2.0
+
+# Dev
+pytest>=7.4.0
