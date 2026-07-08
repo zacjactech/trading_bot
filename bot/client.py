@@ -5,9 +5,11 @@ Base URL: https://testnet.binancefuture.com
 
 Also includes optional python-binance wrapper fallback.
 """
+import math
 import time
 import hmac
 import hashlib
+import json
 import random
 import re
 import requests
@@ -27,7 +29,6 @@ class _MockDispatch:
     @staticmethod
     def handle(method: str, endpoint: str, params: Dict, signed: bool) -> Dict[str, Any]:
         logger.info(f"MOCK API | {method} {endpoint} | params={params}")
-        time.sleep(0.3)  # simulate latency
         
         # ping
         if endpoint == "/fapi/v1/ping":
@@ -103,6 +104,49 @@ class _MockDispatch:
         return {}
 
 
+class MemoryCache:
+    """Simple TTL in-memory cache to prevent redundant API calls"""
+    def __init__(self, default_ttl=2.0):
+        self.default_ttl = default_ttl
+        self._cache = {}
+
+    @staticmethod
+    def stable_key(endpoint: str, params: Dict[str, Any]) -> str:
+        """Build a deterministic cache key.
+
+        Python's built-in hash() is randomized per-process (PYTHONHASHSEED),
+        which would silently break caching across restarts. We use a stable
+        JSON+SHA256 digest of the sorted params so the key is reproducible.
+        """
+        normalized = {
+            (k, v.isoformat() if hasattr(v, "isoformat") else v)
+            for k, v in (params or {}).items()
+        }
+        fingerprint = hashlib.sha256(
+            json.dumps(
+                sorted(normalized),
+                sort_keys=True,
+                separators=(",", ":"),
+                default=str,
+            ).encode("utf-8")
+        ).hexdigest()[:16]
+        return f"{endpoint}_{fingerprint}"
+
+    def get(self, key: str) -> Any:
+        val = self._cache.get(key)
+        if val is None:
+            return None
+        value, expiry = val
+        if time.time() < expiry:
+            return value
+        del self._cache[key]
+        return None
+
+    def set(self, key: str, value: Any, ttl: float = None):
+        ttl = ttl if ttl is not None else self.default_ttl
+        self._cache[key] = (value, time.time() + ttl)
+
+
 class BinanceFuturesClient:
     """
     Binance USDT-M Futures Testnet Client
@@ -130,6 +174,7 @@ class BinanceFuturesClient:
             "X-MBX-APIKEY": self.api_key,
             "Content-Type": "application/x-www-form-urlencoded"
         })
+        self.cache = MemoryCache(default_ttl=2.0)
         
         logger.info(f"BinanceFuturesClient initialized | base_url={self.base_url} | mock={self.mock_mode}")
     
@@ -148,9 +193,22 @@ class BinanceFuturesClient:
         """
         if params is None:
             params = {}
-        
+
+        # Only cache unsigned GETs (public market data like ticker/exchangeInfo).
+        # Signed callsites (balance, account, openOrders, order) return account
+        # state that must remain fresh – caching them risks stale wallet views.
+        cache_key: Optional[str] = None
+        if method == "GET" and not signed:
+            cache_key = MemoryCache.stable_key(endpoint, params)
+            cached_data = self.cache.get(cache_key)
+            if cached_data is not None:
+                return cached_data
+
         if self.mock_mode:
-            return _MockDispatch.handle(method, endpoint, params, signed)
+            data = _MockDispatch.handle(method, endpoint, params, signed)
+            if cache_key is not None:
+                self.cache.set(cache_key, data)
+            return data
         
         if signed:
             params["timestamp"] = int(time.time() * 1000)
@@ -168,11 +226,11 @@ class BinanceFuturesClient:
             
             try:
                 if method == "GET":
-                    response = self.session.get(url, params=params, timeout=10)
+                    response = self.session.get(url, params=params, timeout=5)
                 elif method == "POST":
-                    response = self.session.post(url, params=params, timeout=10)
+                    response = self.session.post(url, params=params, timeout=5)
                 elif method == "DELETE":
-                    response = self.session.delete(url, params=params, timeout=10)
+                    response = self.session.delete(url, params=params, timeout=5)
                 else:
                     raise ValueError(f"Unsupported HTTP method: {method}")
                 
@@ -192,6 +250,8 @@ class BinanceFuturesClient:
                     self.base_url = attempt_url
                 
                 logger.info(f"API SUCCESS | endpoint={endpoint} | keys={list(data.keys()) if isinstance(data, dict) else 'list'}")
+                if cache_key is not None:
+                    self.cache.set(cache_key, data)
                 return data
                 
             except requests.exceptions.RequestException as e:
@@ -243,25 +303,32 @@ class BinanceFuturesClient:
             "type": api_order_type,
             "quantity": quantity,
         }
+
+        # Truncate qty/price to the symbol's allowed precision and step size,
+        # then format as fixed-decimal strings so urlencode doesn't produce
+        # floats like "0.0010000000000000002" which Binance rejects.
+        filters = self._get_symbol_filters(symbol)
+        qty_trunc = self._truncate_to_step(quantity, filters["qty_step"])
+        params["quantity"] = f"{qty_trunc:.{filters['qty_prec']}f}"
         
         if order_type == "LIMIT" or api_order_type == "LIMIT":
             if price is None:
                 raise ValueError("price is required for LIMIT orders")
-            params["price"] = f"{price:.8f}".rstrip('0').rstrip('.') if '.' in f"{price:.8f}" else price
+            params["price"] = f"{self._truncate_to_step(price, filters['price_step']):.{filters['price_prec']}f}"
             params["timeInForce"] = time_in_force
         elif order_type in ["STOP_LIMIT", "STOP", "STOP_LOSS", "STOP_LOSS_LIMIT"]:
             if price is None or stop_price is None:
                 raise ValueError("price and stopPrice required for STOP / STOP_LIMIT orders")
-            params["price"] = price
-            params["stopPrice"] = stop_price
+            params["price"] = f"{self._truncate_to_step(price, filters['price_step']):.{filters['price_prec']}f}"
+            params["stopPrice"] = f"{self._truncate_to_step(stop_price, filters['price_step']):.{filters['price_prec']}f}"
             params["timeInForce"] = time_in_force
             params["type"] = "STOP"
         elif order_type in ["STOP_MARKET", "TAKE_PROFIT", "TAKE_PROFIT_MARKET", "TAKE_PROFIT_LIMIT"]:
             if stop_price is None:
                 raise ValueError(f"stopPrice required for {order_type}")
-            params["stopPrice"] = stop_price
+            params["stopPrice"] = f"{self._truncate_to_step(stop_price, filters['price_step']):.{filters['price_prec']}f}"
             if api_order_type in ["TAKE_PROFIT", "STOP"] and price:
-                params["price"] = price
+                params["price"] = f"{self._truncate_to_step(price, filters['price_step']):.{filters['price_prec']}f}"
                 params["timeInForce"] = time_in_force
         
         if reduce_only:
@@ -342,7 +409,42 @@ class BinanceFuturesClient:
     
     def get_exchange_info(self) -> Dict:
         return self._request("GET", "/fapi/v1/exchangeInfo")
-    
+
+    @staticmethod
+    def _truncate_to_step(value: float, step: float) -> float:
+        """Truncate a value to the nearest valid step (floor, not round)."""
+        if step <= 0:
+            return value
+        return math.floor(value / step) * step
+
+    def _get_symbol_filters(self, symbol: str) -> dict:
+        """Return LOT_SIZE stepSize, PRICE_FILTER tickSize, and MIN_NOTIONAL for a symbol."""
+        defaults = {"qty_step": 0.001, "price_step": 0.01, "qty_prec": 3, "price_prec": 2, "min_notional": 5.0}
+        try:
+            info = self.get_exchange_info()
+            for s in info.get("symbols", []):
+                if s["symbol"] == symbol:
+                    qty_prec = int(s.get("quantityPrecision", 3))
+                    price_prec = int(s.get("pricePrecision", 2))
+                    qty_step = 10 ** -qty_prec
+                    price_step = 10 ** -price_prec
+                    min_notional = 5.0
+                    for f in s.get("filters", []):
+                        if f["filterType"] == "LOT_SIZE":
+                            qty_step = float(f["stepSize"])
+                        elif f["filterType"] == "PRICE_FILTER":
+                            price_step = float(f["tickSize"])
+                        elif f["filterType"] == "MIN_NOTIONAL":
+                            min_notional = float(f.get("notional", 5.0))
+                    return {
+                        "qty_step": qty_step, "price_step": price_step,
+                        "qty_prec": qty_prec, "price_prec": price_prec,
+                        "min_notional": min_notional,
+                    }
+        except Exception:
+            pass
+        return defaults
+
     def get_symbol_price(self, symbol: str) -> float:
         data = self._request("GET", "/fapi/v1/ticker/price", {"symbol": symbol})
         return float(data["price"])

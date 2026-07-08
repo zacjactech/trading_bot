@@ -71,7 +71,7 @@ class TestConfigDefaults:
 
     def test_default_recv_window(self):
         from bot.config import Config
-        assert Config.DEFAULT_RECV_WINDOW == 5000
+        assert Config.DEFAULT_RECV_WINDOW == 10000
         assert isinstance(Config.DEFAULT_RECV_WINDOW, int)
 
     def test_default_time_in_force(self):

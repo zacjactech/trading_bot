@@ -36,7 +36,7 @@ class Config:
     MOCK_TRADING = os.getenv("MOCK_TRADING", "false").lower() in ("true", "1", "yes")
     
     # Trading defaults
-    DEFAULT_RECV_WINDOW = 5000
+    DEFAULT_RECV_WINDOW = 10000
     DEFAULT_TIME_IN_FORCE = "GTC"
     
     @classmethod

@@ -167,9 +167,13 @@ class TestOrderTypeMapping:
             assert result["orderId"] > 0
 
 
+_BTC_FILTERS = {"qty_step": 0.0001, "price_step": 0.10, "qty_prec": 4, "price_prec": 2}
+
+
 class TestPlaceOrderEndpointRouting:
+    @patch("bot.client.BinanceFuturesClient._get_symbol_filters", return_value=_BTC_FILTERS)
     @patch("bot.client.BinanceFuturesClient._request")
-    def test_algo_types_use_algo_endpoint_first(self, mock_request):
+    def test_algo_types_use_algo_endpoint_first(self, mock_request, mock_filters):
         mock_request.return_value = {
             "algoId": 999,
             "orderId": 999,
@@ -180,7 +184,7 @@ class TestPlaceOrderEndpointRouting:
             mock_config.MOCK_TRADING = False
             mock_config.BINANCE_API_KEY = "key"
             mock_config.BINANCE_API_SECRET = "secret"
-            mock_config.DEFAULT_RECV_WINDOW = 5000
+            mock_config.DEFAULT_RECV_WINDOW = 10000
             client = BinanceFuturesClient()
             client.api_key = "key"
             client.api_secret = "secret"
@@ -199,8 +203,9 @@ class TestPlaceOrderEndpointRouting:
             ep = calls[0][0][1]  # second positional arg = endpoint
             assert ep == "/fapi/v1/algoOrder"
 
+    @patch("bot.client.BinanceFuturesClient._get_symbol_filters", return_value=_BTC_FILTERS)
     @patch("bot.client.BinanceFuturesClient._request")
-    def test_market_order_uses_standard_endpoint(self, mock_request):
+    def test_market_order_uses_standard_endpoint(self, mock_request, mock_filters):
         mock_request.return_value = {
             "orderId": 123,
             "status": "FILLED",
@@ -210,7 +215,7 @@ class TestPlaceOrderEndpointRouting:
             mock_config.MOCK_TRADING = False
             mock_config.BINANCE_API_KEY = "key"
             mock_config.BINANCE_API_SECRET = "secret"
-            mock_config.DEFAULT_RECV_WINDOW = 5000
+            mock_config.DEFAULT_RECV_WINDOW = 10000
             client = BinanceFuturesClient()
             client.api_key = "key"
             client.api_secret = "secret"
@@ -228,8 +233,9 @@ class TestPlaceOrderEndpointRouting:
 
 
 class TestAlgoFallbackOn4120:
+    @patch("bot.client.BinanceFuturesClient._get_symbol_filters", return_value=_BTC_FILTERS)
     @patch("bot.client.BinanceFuturesClient._request")
-    def test_4120_error_triggers_algo_fallback(self, mock_request):
+    def test_4120_error_triggers_algo_fallback(self, mock_request, mock_filters):
         call_count = [0]
 
         def side_effect(method, endpoint, params=None, signed=False):
@@ -249,7 +255,7 @@ class TestAlgoFallbackOn4120:
             mock_config.MOCK_TRADING = False
             mock_config.BINANCE_API_KEY = "key"
             mock_config.BINANCE_API_SECRET = "secret"
-            mock_config.DEFAULT_RECV_WINDOW = 5000
+            mock_config.DEFAULT_RECV_WINDOW = 10000
             client = BinanceFuturesClient()
             client.api_key = "key"
             client.api_secret = "secret"
@@ -878,14 +884,15 @@ class TestPriceFormatting:
             )
             assert result["orderId"] > 0
 
-    def test_stop_limit_includes_price_and_stop_in_params(self):
+    @patch("bot.client.BinanceFuturesClient._get_symbol_filters", return_value=_BTC_FILTERS)
+    def test_stop_limit_includes_price_and_stop_in_params(self, mock_filters):
         with patch("bot.client.BinanceFuturesClient._request") as mock_request:
             mock_request.return_value = {"orderId": 100, "status": "NEW"}
             with patch("bot.client.Config") as mock_config:
                 mock_config.MOCK_TRADING = False
                 mock_config.BINANCE_API_KEY = "key"
                 mock_config.BINANCE_API_SECRET = "secret"
-                mock_config.DEFAULT_RECV_WINDOW = 5000
+                mock_config.DEFAULT_RECV_WINDOW = 10000
                 client = BinanceFuturesClient()
 
                 client.place_order(
@@ -898,7 +905,7 @@ class TestPriceFormatting:
                 )
 
                 call_params = mock_request.call_args[0][2]
-                assert call_params["price"] == 59000.0
-                assert call_params["triggerprice"] == 59500.0
+                assert call_params["price"] == "59000.00"
+                assert call_params["triggerprice"] == "59500.00"
                 assert call_params["type"] == "STOP"
                 assert call_params["algotype"] == "conditional"
